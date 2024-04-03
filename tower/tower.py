@@ -11,6 +11,7 @@ GREEN = (0, 255, 0)
 RED = ( 255, 0, 0)
 BLUE = (0,0,255)
 PLOMO = (122,122,122)
+BROWN = (50,20,30)
 
 
 pygame.init()
@@ -41,7 +42,7 @@ def draw_text3(surface, text, size, x, y):
 	text_rect.midtop = (x, y)
 	surface.blit(text_surface, text_rect)
 
-def draw_hp_bar(surface, x, y, percentage):
+def draw_hp_bar1(surface, x, y, percentage):
 	BAR_LENGHT = 100
 	BAR_HEIGHT = 10
 	fill = (percentage / 100) * BAR_LENGHT
@@ -49,6 +50,15 @@ def draw_hp_bar(surface, x, y, percentage):
 	fill = pygame.Rect(x, y, fill, BAR_HEIGHT)
 	pygame.draw.rect(surface, GREEN, fill)
 	pygame.draw.rect(surface, WHITE, border, 2)
+
+def draw_hp_bar(surface, x, y, percentage):
+	BAR_LENGHT = 50
+	BAR_HEIGHT = 10
+	fill = (percentage / 100) * BAR_LENGHT
+	border = pygame.Rect(x, y, BAR_LENGHT, BAR_HEIGHT)
+	fill = pygame.Rect(x, y, fill, BAR_HEIGHT)
+	pygame.draw.rect(surface, GREEN, fill)
+	pygame.draw.rect(surface, BLACK, border, 2)
 
 def draw_mana_bar(surface, x, y, percentage):
 	BAR_LENGHT = 100
@@ -58,6 +68,24 @@ def draw_mana_bar(surface, x, y, percentage):
 	fill = pygame.Rect(x, y, fill, BAR_HEIGHT)
 	pygame.draw.rect(surface, BLUE, fill)
 	pygame.draw.rect(surface, WHITE, border, 2)
+
+def draw_hp_bar2(surface, x, y, percentage):
+	BAR_LENGHT = 50
+	BAR_HEIGHT = 10
+	fill = (percentage / 100) * BAR_LENGHT
+	border = pygame.Rect(x, y, BAR_LENGHT, BAR_HEIGHT)
+	fill = pygame.Rect(x, y, fill, BAR_HEIGHT)
+	pygame.draw.rect(surface, BROWN, fill)
+	pygame.draw.rect(surface, BLACK, border, 2)
+
+def draw_hp_bar3(surface, x, y, percentage):
+	BAR_LENGHT = 100
+	BAR_HEIGHT = 10
+	fill = (percentage / 100) * BAR_LENGHT
+	border = pygame.Rect(x, y, BAR_LENGHT, BAR_HEIGHT)
+	fill = pygame.Rect(x, y, fill, BAR_HEIGHT)
+	pygame.draw.rect(surface, BROWN, fill)
+	pygame.draw.rect(surface, BLACK, border, 2)
 
 def distance(a,b):
 	#pitagoras distancia entre a y b
@@ -1375,11 +1403,15 @@ while running:
 	draw_text2(screen, "P1", 20, 210, 6)
 	draw_text2(screen, "P2", 20, 740, 6)
 
-	draw_hp_bar(screen, 220, 5, player1.hp/5)
+	draw_hp_bar1(screen, 220, 5, player1.hp/5)
 	draw_text2(screen, str(int(player1.hp)) + "/500", 10, 270, 6)
+	if player1.hp > 0:
+		draw_hp_bar(screen, player1.rect.x, player1.rect.y - 10, player1.hp/5)
 
-	draw_hp_bar(screen, 750, 5, player2.hp/5)
-	draw_text2(screen, str(int(player2.hp))+ "/500", 10, 800, 6)
+	draw_hp_bar3(screen, 750, 5, player2.hp/5)
+	draw_text1(screen, str(int(player2.hp))+ "/500", 10, 800, 6)
+	if player2.hp > 0:
+		draw_hp_bar2(screen, player2.rect.x, player2.rect.y - 10, player2.hp/5)
 
 	draw_mana_bar(screen, 220, 15, player1.mana)
 	draw_text2(screen, str(int(player1.mana))+ "/100", 10, 270, 16)
@@ -1387,52 +1419,41 @@ while running:
 	draw_mana_bar(screen, 750, 15, player2.mana)
 	draw_text2(screen, str(int(player2.mana))+ "/100", 10, 800, 16)
 
-	draw_hp_bar(screen, 0, 115, tower1.hp/20)
+	draw_hp_bar1(screen, tower1.rect.x, tower1.rect.y - 5, tower1.hp/20)
 	draw_text2(screen, str(int(tower1.hp)) + "/2000", 10, 50, 116)
 
-	draw_hp_bar(screen, 1100, 690, tower2.hp/20)
+	draw_hp_bar3(screen, tower2.rect.x, tower2.rect.y - 10, tower2.hp/20)
 	draw_text2(screen, str(int(tower2.hp))+ "/2000", 10, 1145, 691)
 
-	draw_hp_bar(screen, 100, 30, creep_melee1a.hp/(55/10))
-	draw_text2(screen, "cm 1", 10, 90, 30)
+	for creep_melee1a in team1cma_list:
+		draw_hp_bar(screen, creep_melee1a.rect.x, creep_melee1a.rect.y - 10, creep_melee1a.hp/(55/10))
 	
-
-	draw_hp_bar(screen, 200, 30, creep_melee1b.hp/(55/10))
-	draw_text2(screen, "cm 2", 10, 190, 30)
-
-	draw_hp_bar(screen, 300, 30, creep_melee1c.hp/(55/10))
-	draw_text2(screen, "cm 3", 10, 290, 30)
-
-	draw_hp_bar(screen, 400, 30, creep_ranged1.hp/3)
-	draw_text2(screen, "cr 1", 10, 390, 30)
-	try:
-		draw_hp_bar(screen, 500, 30, creep_asedio1.hp/(935/100))
-		draw_text2(screen, "ca 1", 10, 490, 30)
-	except(AttributeError):
-		pass
+	for creep_melee1b in team1cmb_list:
+		draw_hp_bar(screen, creep_melee1b.rect.x, creep_melee1b.rect.y - 10, creep_melee1b.hp/(55/10))
 	
-
-	draw_hp_bar(screen, 600, 30, creep_melee2a.hp/(55/10))
-	draw_text2(screen, "cm 1", 10, 590, 30)
+	for creep_melee1c in team1cmc_list:
+		draw_hp_bar(screen, creep_melee1c.rect.x, creep_melee1c.rect.y - 10, creep_melee1c.hp/(55/10))
 	
-
-	draw_hp_bar(screen, 700, 30, creep_melee2b.hp/(55/10))
-	draw_text2(screen, "cm 2", 10, 690, 30)
+	for creep_ranged1 in team1cr_list:
+		draw_hp_bar(screen, creep_ranged1.rect.x, creep_ranged1.rect.y - 10, creep_ranged1.hp/3)
 	
+	for creep_asedio1 in team1ca_list:
+		draw_hp_bar(screen, creep_asedio1.rect.x, creep_asedio1.rect.y - 10, creep_asedio1.hp/(935/100))
 
-	draw_hp_bar(screen, 800, 30, creep_melee2c.hp/(55/10))
-	draw_text2(screen, "cm 3", 10, 790, 30)
+	for creep_melee2a in team2cma_list:
+		draw_hp_bar2(screen, creep_melee2a.rect.x, creep_melee2a.rect.y - 10, creep_melee2a.hp/(55/10))
 	
-
-	draw_hp_bar(screen, 900, 30, creep_ranged2.hp/3)
-	draw_text2(screen, "cr 1", 10, 890, 30)
+	for creep_melee2b in team2cmb_list:
+		draw_hp_bar2(screen, creep_melee2b.rect.x, creep_melee2b.rect.y - 10, creep_melee2b.hp/(55/10))
 	
+	for creep_melee2c in team2cmc_list:
+		draw_hp_bar2(screen, creep_melee2c.rect.x, creep_melee2c.rect.y - 10, creep_melee2c.hp/(55/10))
 
-	try:
-		draw_hp_bar(screen, 1000, 30, creep_asedio2.hp/(935/100))
-		draw_text2(screen, "ca 1", 10, 990, 30)
-	except(AttributeError):
-		pass
+	for creep_ranged2 in team2cr_list:
+		draw_hp_bar2(screen, creep_ranged2.rect.x, creep_ranged2.rect.y - 10, creep_ranged2.hp/3)
+		
+	for creep_asedio2 in team2ca_list:
+		draw_hp_bar2(screen, creep_asedio2.rect.x, creep_asedio2.rect.y - 10, creep_asedio2.hp/(935/100))
 	
 
 	#reloj
