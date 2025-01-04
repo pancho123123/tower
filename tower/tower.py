@@ -1,7 +1,6 @@
 
 import pygame, random
 from random import randint
-from pathlib import Path
 
 WIDTH = 1200
 HEIGHT = 700
@@ -98,7 +97,11 @@ def direction(a,b):
 	dx = b.rect.centerx - a.rect.centerx
 	dy = b.rect.centery - a.rect.centery
 	radio = (dx**2 + dy**2)**(1/2)
-	return dx/radio, dy/radio
+	if radio != 0:
+		x, y = (dx/radio, dy/radio)
+	else:
+		x, y = (0, 0)
+	return x, y
 
 creep_asedio1=None
 creep_asedio2=None
@@ -126,7 +129,6 @@ class Player1(pygame.sprite.Sprite):
 			self.mana = 100
 		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 			
 		if self.hp > 500:
@@ -176,7 +178,6 @@ class Player2(pygame.sprite.Sprite):
 			self.mana = 100
 		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 			
 		if self.hp > 500:
@@ -216,36 +217,38 @@ class Tower1(pygame.sprite.Sprite):
 		self.armor = 12
 		self.target = target
 		self.counter = True
+		self.start_time = 0
+		self.target_list = []
+		
 
 	def shoot(self):
-		bullet1 = Bullet1(tower1.rect.x,tower1.rect.y, self.target)
+		bullet1 = Bullet1(tower1.rect.x,tower1.rect.y, self.target,pygame.time.get_ticks())
 		all_sprites.add(bullet1)
 		bullets1.add(bullet1)
 
 	def update(self):
 		now = pygame.time.get_ticks()
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 2000:
 			self.hp = 2000
-		target_list = [creep_melee2a, creep_melee2b, creep_melee2c, creep_ranged2, player2, tower2]
-
-		if creep_asedio2 is not None:
-			target_list.append(creep_asedio2)
+		for creep in team2:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
 		
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
 		if abs(self.target.rect.centerx - self.rect.centerx) < 300 and abs(self.target.rect.centery - self.rect.centery) < 300:
 			if self.counter:
+				self.start_time = pygame.time.get_ticks()
 				self.counter = False
 				self.shoot()
 				
-		if (now//100) % 10 == 0:
+		if now - self.start_time >= 1000:
 			self.counter = True 
 		
 class Tower2(pygame.sprite.Sprite):
@@ -260,39 +263,42 @@ class Tower2(pygame.sprite.Sprite):
 		self.armor = 12
 		self.target = target
 		self.counter = True
+		self.start_time = 0
+		self.target_list = []
+		
 
 	def shoot(self):
-		bullet2 = Bullet2(tower2.rect.x,tower2.rect.y, self.target)
+		bullet2 = Bullet2(tower2.rect.x,tower2.rect.y, self.target,pygame.time.get_ticks())
 		all_sprites.add(bullet2)
 		bullets2.add(bullet2)
 
 	def update(self):
 		now = pygame.time.get_ticks()
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 2000:
 			self.hp = 2000
-		target_list = [creep_melee1a, creep_melee1b, creep_melee1c, creep_ranged1, player1, tower1]
-		if creep_asedio1 is not None:
-			target_list.append(creep_asedio1)
+		for creep in team1:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
 		
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
 		if abs(self.target.rect.centerx - self.rect.centerx) < 300 and abs(self.target.rect.centery - self.rect.centery) < 300:
 			if self.counter:
+				self.start_time = pygame.time.get_ticks()
 				self.counter = False
 				self.shoot()
 			
-		if (now//100) % 10 == 0:
+		if now - self.start_time >= 1000:
 			self.counter = True 
 		
 class Bullet1(pygame.sprite.Sprite):	
-	def __init__(self ,x , y, target):
+	def __init__(self ,x , y, target, time):
 		super().__init__()
 		self.image = pygame.transform.scale(pygame.image.load("img/1.png").convert(),(25,25))
 		self.image.set_colorkey(BLACK)
@@ -301,23 +307,19 @@ class Bullet1(pygame.sprite.Sprite):
 		self.rect.centerx = x
 		self.speed = 10
 		self.target = target
+		self.start_time = 0
+		self.time = time
 
 	def update(self):
-
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
-			self.rect.centerx += self.speed*x
-			self.rect.centery += self.speed*y
+		now = pygame.time.get_ticks()
+		x,y = direction(self, self.target)
+		self.rect.centerx += self.speed*x
+		self.rect.centery += self.speed*y
+		if now - self.time >= 2000:
+			self.kill()
 		
 class Bullet2(pygame.sprite.Sprite):	
-	def __init__(self ,x , y, target):
+	def __init__(self ,x , y, target, time):
 		super().__init__()
 		self.image = pygame.transform.scale(pygame.image.load("img/1.png").convert(),(25,25))
 		self.image.set_colorkey(BLACK)
@@ -326,21 +328,56 @@ class Bullet2(pygame.sprite.Sprite):
 		self.rect.centerx = x
 		self.speed = 10
 		self.target = target
+		self.time = time
 
 	def update(self):
-
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
-			self.rect.centerx += self.speed*x
-			self.rect.centery += self.speed*y
+		now = pygame.time.get_ticks()
+		x,y = direction(self, self.target)
+		self.rect.centerx += self.speed*x
+		self.rect.centery += self.speed*y
+		if now - self.time >= 2000:
+			self.kill()
 		
+class Bullet3(pygame.sprite.Sprite):	
+	def __init__(self ,x , y, target, time):
+		super().__init__()
+		self.image = pygame.transform.scale(pygame.image.load("img/bullet_asedio.jpg").convert(),(15,15))
+		self.image.set_colorkey(WHITE)
+		self.rect = self.image.get_rect()
+		self.rect.centery = y
+		self.rect.centerx = x
+		self.speed = 10
+		self.target = target
+		self.time = time
+
+	def update(self):
+		now = pygame.time.get_ticks()
+		x,y = direction(self, self.target)
+		self.rect.centerx += self.speed*x
+		self.rect.centery += self.speed*y
+		if now - self.time >= 2000:
+			self.kill()
+
+class Bullet4(pygame.sprite.Sprite):	
+	def __init__(self ,x , y, target, time):
+		super().__init__()
+		self.image = pygame.transform.scale(pygame.image.load("img/bullet_ranged.png").convert(),(15,15))
+		self.image.set_colorkey(BLACK)
+		self.rect = self.image.get_rect()
+		self.rect.centery = y
+		self.rect.centerx = x
+		self.speed = 10
+		self.target = target
+		self.time = time
+
+	def update(self):
+		now = pygame.time.get_ticks()
+		x,y = direction(self, self.target)
+		self.rect.centerx += self.speed*x
+		self.rect.centery += self.speed*y
+		if now - self.time >= 2000:
+			self.kill()
+
 class Creep_melee1(pygame.sprite.Sprite):		
 	def __init__(self):
 		super().__init__()
@@ -353,48 +390,28 @@ class Creep_melee1(pygame.sprite.Sprite):
 		self.hp = 550
 		self.armor = 2
 		self.target = None
+		self.target_list = []
+		
 
 	def update(self):
-		target_list = [creep_melee2a, creep_melee2b, creep_melee2c, creep_ranged2, player2, tower2]
-
-		if creep_asedio2 is not None:
-			target_list.append(creep_asedio2)
+		for creep in team2:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
 		
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
-			self.rect.centerx += self.speed*x
-			self.rect.centery += self.speed*y
+		x,y = direction(self, self.target)
+		self.rect.centerx += self.speed*x
+		self.rect.centery += self.speed*y
 
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 550:
 			self.hp = 550
-
-class Creep_melee1a(Creep_melee1):
-	def __init__(self):
-		super().__init__()
-
-class Creep_melee1b(Creep_melee1):
-	def __init__(self):
-		super().__init__()
-		
-class Creep_melee1c(Creep_melee1):
-	def __init__(self):
-		super().__init__()
 
 class Creep_melee2(pygame.sprite.Sprite):
 	def __init__(self):
@@ -408,47 +425,28 @@ class Creep_melee2(pygame.sprite.Sprite):
 		self.hp = 550
 		self.armor = 2
 		self.target = None
+		self.target_list = []
+		
 
 	def update(self):
-		target_list = [creep_melee1a, creep_melee1b, creep_melee1c, creep_ranged1, player1, tower1]
-		if creep_asedio1 is not None:
-			target_list.append(creep_asedio1)
+		for creep in team1:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
 		
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
-			self.rect.centerx += self.speed*x
-			self.rect.centery += self.speed*y
+		x,y = direction(self, self.target)
+		self.rect.centerx += self.speed*x
+		self.rect.centery += self.speed*y
 
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 550:
 			self.hp = 550
-		
-class Creep_melee2a(Creep_melee2):
-	def __init__(self):
-		super().__init__()
-		
-class Creep_melee2b(Creep_melee2):
-	def __init__(self):
-		super().__init__()
-		
-class Creep_melee2c(Creep_melee2):
-	def __init__(self):
-		super().__init__()
 
 class Creep_range1(pygame.sprite.Sprite):
 	def __init__(self):
@@ -462,33 +460,45 @@ class Creep_range1(pygame.sprite.Sprite):
 		self.hp = 300
 		self.armor = 0
 		self.target = None
+		self.start_time = 0
+		self.counter = True
+		self.counter2 = True
+		self.target_list = []
+		
+
+	def shoot(self):
+		bullet3 = Bullet4(creep_ranged1.rect.x,creep_ranged1.rect.y, self.target,pygame.time.get_ticks())
+		all_sprites.add(bullet3)
+		bullets3.add(bullet3)
 
 	def update(self):
-		target_list = [creep_melee2a, creep_melee2b, creep_melee2c, creep_ranged2, player2, tower2]
+		now = pygame.time.get_ticks()
+		for creep in team2:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
 		
-		if creep_asedio2 is not None:
-			target_list.append(creep_asedio2)
-		
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
+		x,y = direction(self, self.target)
+		if self.counter2:
 			self.rect.centerx += self.speed*x
 			self.rect.centery += self.speed*y
+		if abs(self.target.rect.centerx - self.rect.centerx) < 300 and abs(self.target.rect.centery - self.rect.centery) < 300:
+			self.counter2 = False
+			if self.counter:
+				self.start_time = pygame.time.get_ticks()
+				self.counter = False
+				self.shoot()
+		else:
+			self.counter2 = True
+		if now - self.start_time >= 1000:
+			self.counter = True
 		
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 300:
 			self.hp = 300
@@ -505,33 +515,45 @@ class Creep_range2(pygame.sprite.Sprite):
 		self.hp = 300
 		self.armor = 0
 		self.target = None
+		self.start_time = 0
+		self.counter = True
+		self.counter2 = True
+		self.target_list = []
+		
+
+	def shoot(self):
+		bullet4 = Bullet4(creep_ranged2.rect.x,creep_ranged2.rect.y, self.target,pygame.time.get_ticks())
+		all_sprites.add(bullet4)
+		bullets4.add(bullet4)
 
 	def update(self):
-		target_list = [creep_melee1a, creep_melee1b, creep_melee1c, creep_ranged1, player1, tower1]
+		now = pygame.time.get_ticks()
+		for creep in team1:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
 		
-		if creep_asedio1 is not None:
-			target_list.append(creep_asedio1)
-		
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
+		x,y = direction(self, self.target)
+		if self.counter2:
 			self.rect.centerx += self.speed*x
 			self.rect.centery += self.speed*y
+		if abs(self.target.rect.centerx - self.rect.centerx) < 300 and abs(self.target.rect.centery - self.rect.centery) < 300:
+			self.counter2 = False
+			if self.counter:
+				self.start_time = pygame.time.get_ticks()
+				self.counter = False
+				self.shoot()
+		else:
+			self.counter2 = True
+		if now - self.start_time >= 1000:
+			self.counter = True
 
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 300:
 			self.hp = 300
@@ -548,29 +570,45 @@ class Creep_asedio1(pygame.sprite.Sprite):
 		self.hp = 935
 		self.armor = 0
 		self.target = None
+		self.start_time = 0
+		self.counter = True
+		self.counter2 = True
+		self.target_list = []
+		
+
+	def shoot(self):
+		bullet5 = Bullet3(creep_asedio1.rect.x,creep_asedio1.rect.y, self.target,pygame.time.get_ticks())
+		all_sprites.add(bullet5)
+		bullets5.add(bullet5)
 
 	def update(self):
-		target_list = [creep_melee2a, creep_melee2b, creep_melee2c, creep_ranged2, creep_asedio2, player2, tower2]
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		now = pygame.time.get_ticks()
+		for creep in team2:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
+
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
+		x,y = direction(self, self.target)
+		if self.counter2:
 			self.rect.centerx += self.speed*x
 			self.rect.centery += self.speed*y
+		if abs(self.target.rect.centerx - self.rect.centerx) < 300 and abs(self.target.rect.centery - self.rect.centery) < 300:
+			self.counter2 = False
+			if self.counter:
+				self.start_time = pygame.time.get_ticks()
+				self.counter = False
+				self.shoot()
+		else:
+			self.counter2 = True
+		if now - self.start_time >= 3000:
+			self.counter = True
 		
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 935:
 			self.hp = 935
@@ -587,35 +625,49 @@ class Creep_asedio2(pygame.sprite.Sprite):
 		self.hp = 935
 		self.armor = 0
 		self.target = None
+		self.start_time = 0
+		self.counter = True
+		self.counter2 = True
+		self.target_list = []
+		
+	def shoot(self):
+		bullet6 = Bullet3(creep_asedio2.rect.x,creep_asedio2.rect.y, self.target,pygame.time.get_ticks())
+		all_sprites.add(bullet6)
+		bullets6.add(bullet6)
 
 	def update(self):
-		target_list = [creep_melee1a, creep_melee1b, creep_melee1c, creep_ranged1, creep_asedio1, player1, tower1]
-		target_list = [t for t in target_list if t.hp > 0]
-		distance_list = [(distance(self,t),t) for t in target_list]
+		now = pygame.time.get_ticks()
+		for creep in team1:
+			if creep not in self.target_list:
+				self.target_list.append(creep)
+
+		self.target_list = [t for t in self.target_list if t.hp > 0]
+		distance_list = [(distance(self,t),t) for t in self.target_list]
 		if len(distance_list)==0:
 			distance_list = [(0,self.target)]
 		self.target = sorted(distance_list, key=lambda x: x[0])[0][1]
-		if (self.target.rect.centerx - self.rect.centerx) == 0:
-			if self.target.rect.centery > self.rect.centery:
-				self.rect.centery += self.speed 
-			elif self.rect.centery > self.target.rect.centery:
-				self.rect.centery -= self.speed
-			else:
-				self.rect.centery += 0
-		elif (self.target.rect.centerx - self.rect.centerx) != 0:
-			x,y = direction(self, self.target)
+		x,y = direction(self, self.target)
+		if self.counter2:
 			self.rect.centerx += self.speed*x
 			self.rect.centery += self.speed*y
+		if abs(self.target.rect.centerx - self.rect.centerx) < 300 and abs(self.target.rect.centery - self.rect.centery) < 300:
+			self.counter2 = False
+			if self.counter:
+				self.start_time = pygame.time.get_ticks()
+				self.counter = False
+				self.shoot()
+		else:
+			self.counter2 = True
+		if now - self.start_time >= 3000:
+			self.counter = True
 		
-		if self.hp < 0:
+		if self.hp <= 0:
 			self.hp = 0
-		if self.hp == 0:
 			self.kill()
 		if self.hp > 935:
 			self.hp = 935
 
 def show_go_screen():
-	
 	screen.fill(BLACK)
 	draw_text1(screen, "Tower", 65, WIDTH // 2, HEIGHT // 4)
 	draw_text1(screen, "Destruye la torre enemiga", 20, WIDTH // 2, HEIGHT // 2)
@@ -635,7 +687,6 @@ def show_go_screen():
 def show_game_over_screen1():
 	screen.fill(BLACK)
 	draw_text1(screen, "Radiant victory", 60, WIDTH  // 2, HEIGHT * 1/4)
-		#draw_text(screen, "score: "+str(score), 30, WIDTH // 2, HEIGHT // 2)
 	draw_text1(screen, "Press Q", 20, WIDTH // 2, HEIGHT * 4/5)
 	
 	pygame.display.flip()
@@ -652,7 +703,6 @@ def show_game_over_screen1():
 def show_game_over_screen2():
 	screen.fill(BLACK)
 	draw_text1(screen, "Dire victory", 60, WIDTH  // 2, HEIGHT * 1/4)
-		#draw_text(screen, "score: "+str(score), 30, WIDTH // 2, HEIGHT // 2)
 	draw_text1(screen, "Press Q", 20, WIDTH // 2, HEIGHT * 4/5)
 
 	pygame.display.flip()
@@ -675,53 +725,61 @@ game_over1 = False
 game_over2 = False
 running = True
 start = True
+counter1 = True
+counter2 = True
+start_time2 = 0
+start_time3 = 0
 while running:
 	if game_over1:
 
 		show_game_over_screen1()
 		game_over1 = False
 		all_sprites = pygame.sprite.Group()
+		team1 = pygame.sprite.Group()
+		team2 = pygame.sprite.Group()
 		team1p_list = pygame.sprite.Group()
 		team2p_list = pygame.sprite.Group()
 		team1cr_list = pygame.sprite.Group()
 		team2cr_list = pygame.sprite.Group()
-		team1cma_list = pygame.sprite.Group()
-		team1cmb_list = pygame.sprite.Group()
-		team1cmc_list = pygame.sprite.Group()
-		team2cma_list = pygame.sprite.Group()
-		team2cmb_list = pygame.sprite.Group()
-		team2cmc_list = pygame.sprite.Group()
+		team1cm_list = pygame.sprite.Group()
+		team2cm_list = pygame.sprite.Group()
 		team1ca_list = pygame.sprite.Group()
 		team2ca_list = pygame.sprite.Group()
 		bullets1 = pygame.sprite.Group()
 		bullets2 = pygame.sprite.Group()
+		bullets3 = pygame.sprite.Group()
+		bullets4 = pygame.sprite.Group()
+		bullets5 = pygame.sprite.Group()
+		bullets6 = pygame.sprite.Group()
 		
 		player1 = Player1()
 		player2 = Player2()
 		all_sprites.add(player1, player2)
+		team1.add(player1)
+		team2.add(player2)
 		team1p_list.add(player1)
 		team2p_list.add(player2)
 		tower1 = Tower1(any)
 		tower2 = Tower2(any)
 		all_sprites.add(tower1, tower2)
+		team1.add(tower1)
+		team2.add(tower2)
 		
-		creep_melee1a = Creep_melee1a()
-		creep_melee1b = Creep_melee1b()
-		creep_melee1c = Creep_melee1c()
-		creep_melee2a = Creep_melee2a()
-		creep_melee2b = Creep_melee2b()
-		creep_melee2c = Creep_melee2c()
-		team1cma_list.add(creep_melee1a)
-		team1cmb_list.add(creep_melee1b)
-		team1cmc_list.add(creep_melee1c)
-		team2cma_list.add(creep_melee2a)
-		team2cmb_list.add(creep_melee2b)
-		team2cmc_list.add(creep_melee2c)
-
-		all_sprites.add(creep_melee1a, creep_melee2a, creep_melee1b, creep_melee2b, creep_melee1c, creep_melee2c)
+		for i in range(4):
+			creep = Creep_melee1()
+			team1.add(creep)
+			team1cm_list.add(creep)
+			all_sprites.add(creep)
+		for i in range(4):
+			creep = Creep_melee2()
+			team2.add(creep)
+			team2cm_list.add(creep)
+			all_sprites.add(creep)
 			
 		creep_ranged1 = Creep_range1()
 		creep_ranged2 = Creep_range2()
+		team1.add(creep_ranged1)
+		team2.add(creep_ranged2)
 		team1cr_list.add(creep_ranged1)
 		team2cr_list.add(creep_ranged2)
 		all_sprites.add(creep_ranged1, creep_ranged2)
@@ -732,23 +790,27 @@ while running:
 		show_game_over_screen2()
 		game_over2 = False
 		all_sprites = pygame.sprite.Group()
+		team1 = pygame.sprite.Group()
+		team2 = pygame.sprite.Group()
 		team1p_list = pygame.sprite.Group()
 		team2p_list = pygame.sprite.Group()
 		team1cr_list = pygame.sprite.Group()
 		team2cr_list = pygame.sprite.Group()
-		team1cma_list = pygame.sprite.Group()
-		team1cmb_list = pygame.sprite.Group()
-		team1cmc_list = pygame.sprite.Group()
-		team2cma_list = pygame.sprite.Group()
-		team2cmb_list = pygame.sprite.Group()
-		team2cmc_list = pygame.sprite.Group()
+		team1cm_list = pygame.sprite.Group()
+		team2cm_list = pygame.sprite.Group()
 		team1ca_list = pygame.sprite.Group()
 		team2ca_list = pygame.sprite.Group()
 		bullets1 = pygame.sprite.Group()
 		bullets2 = pygame.sprite.Group()
+		bullets3 = pygame.sprite.Group()
+		bullets4 = pygame.sprite.Group()
+		bullets5 = pygame.sprite.Group()
+		bullets6 = pygame.sprite.Group()
 		
 		player1 = Player1()
 		player2 = Player2()
+		team1.add(player1)
+		team2.add(player2)
 		team1p_list.add(player1)
 		team2p_list.add(player2)
 		all_sprites.add(player1, player2)
@@ -756,24 +818,24 @@ while running:
 		tower1 = Tower1(any)
 		tower2 = Tower2(any)
 		all_sprites.add(tower1, tower2)
+		team1.add(tower1)
+		team2.add(tower2)
 		
-		creep_melee1a = Creep_melee1a()
-		creep_melee1b = Creep_melee1b()
-		creep_melee1c = Creep_melee1c()
-		creep_melee2a = Creep_melee2a()
-		creep_melee2b = Creep_melee2b()
-		creep_melee2c = Creep_melee2c()
-		team1cma_list.add(creep_melee1a)
-		team1cmb_list.add(creep_melee1b)
-		team1cmc_list.add(creep_melee1c)
-		team2cma_list.add(creep_melee2a)
-		team2cmb_list.add(creep_melee2b)
-		team2cmc_list.add(creep_melee2c)
+		for i in range(4):
+			creep = Creep_melee1()
+			team1.add(creep)
+			team1cm_list.add(creep)
+			all_sprites.add(creep)
+		for i in range(4):
+			creep = Creep_melee2()
+			team2.add(creep)
+			team2cm_list.add(creep)
+			all_sprites.add(creep)
 
-		all_sprites.add(creep_melee1a, creep_melee2a, creep_melee1b, creep_melee2b, creep_melee1c, creep_melee2c)
-			
 		creep_ranged1 = Creep_range1()
 		creep_ranged2 = Creep_range2()
+		team1.add(creep_ranged1)
+		team2.add(creep_ranged2)
 		team1cr_list.add(creep_ranged1)
 		team2cr_list.add(creep_ranged2)
 		all_sprites.add(creep_ranged1, creep_ranged2)
@@ -784,23 +846,27 @@ while running:
 		start = False
 
 		all_sprites = pygame.sprite.Group()
+		team1 = pygame.sprite.Group()
+		team2 = pygame.sprite.Group()
 		team1p_list = pygame.sprite.Group()
 		team2p_list = pygame.sprite.Group()
 		team1cr_list = pygame.sprite.Group()
 		team2cr_list = pygame.sprite.Group()
-		team1cma_list = pygame.sprite.Group()
-		team1cmb_list = pygame.sprite.Group()
-		team1cmc_list = pygame.sprite.Group()
-		team2cma_list = pygame.sprite.Group()
-		team2cmb_list = pygame.sprite.Group()
-		team2cmc_list = pygame.sprite.Group()
+		team1cm_list = pygame.sprite.Group()
+		team2cm_list = pygame.sprite.Group()
 		team1ca_list = pygame.sprite.Group()
 		team2ca_list = pygame.sprite.Group()
 		bullets1 = pygame.sprite.Group()
 		bullets2 = pygame.sprite.Group()
+		bullets3 = pygame.sprite.Group()
+		bullets4 = pygame.sprite.Group()
+		bullets5 = pygame.sprite.Group()
+		bullets6 = pygame.sprite.Group()
 		
 		player1 = Player1()
 		player2 = Player2()
+		team1.add(player1)
+		team2.add(player2)
 		team1p_list.add(player1)
 		team2p_list.add(player2)
 		all_sprites.add(player1, player2)
@@ -808,24 +874,24 @@ while running:
 		tower1 = Tower1(any)
 		tower2 = Tower2(any)
 		all_sprites.add(tower1, tower2)
+		team1.add(tower1)
+		team2.add(tower2)
 		
-		creep_melee1a = Creep_melee1a()
-		creep_melee1b = Creep_melee1b()
-		creep_melee1c = Creep_melee1c()
-		creep_melee2a = Creep_melee2a()
-		creep_melee2b = Creep_melee2b()
-		creep_melee2c = Creep_melee2c()
-		team1cma_list.add(creep_melee1a)
-		team1cmb_list.add(creep_melee1b)
-		team1cmc_list.add(creep_melee1c)
-		team2cma_list.add(creep_melee2a)
-		team2cmb_list.add(creep_melee2b)
-		team2cmc_list.add(creep_melee2c)
-
-		all_sprites.add(creep_melee1a, creep_melee2a, creep_melee1b, creep_melee2b, creep_melee1c, creep_melee2c)
-					
+		for i in range(4):
+			creep = Creep_melee1()
+			team1.add(creep)
+			team1cm_list.add(creep)
+			all_sprites.add(creep)
+		for i in range(4):
+			creep = Creep_melee2()
+			team2.add(creep)
+			team2cm_list.add(creep)
+			all_sprites.add(creep)
+			
 		creep_ranged1 = Creep_range1()
 		creep_ranged2 = Creep_range2()
+		team1.add(creep_ranged1)
+		team2.add(creep_ranged2)
 		team1cr_list.add(creep_ranged1)
 		team2cr_list.add(creep_ranged2)
 		all_sprites.add(creep_ranged1, creep_ranged2)
@@ -833,23 +899,21 @@ while running:
 		
 	if wave:
 		wave = False
-		creep_melee1a = Creep_melee1a()
-		creep_melee1b = Creep_melee1b()
-		creep_melee1c = Creep_melee1c()
-		creep_melee2a = Creep_melee2a()
-		creep_melee2b = Creep_melee2b()
-		creep_melee2c = Creep_melee2c()
-		team1cma_list.add(creep_melee1a)
-		team1cmb_list.add(creep_melee1b)
-		team1cmc_list.add(creep_melee1c)
-		team2cma_list.add(creep_melee2a)
-		team2cmb_list.add(creep_melee2b)
-		team2cmc_list.add(creep_melee2c)
-
-		all_sprites.add(creep_melee1a, creep_melee2a, creep_melee1b, creep_melee2b, creep_melee1c, creep_melee2c)
-			
+		for i in range(4):
+			creep = Creep_melee1()
+			team1.add(creep)
+			team1cm_list.add(creep)
+			all_sprites.add(creep)
+		for i in range(4):
+			creep = Creep_melee2()
+			team2.add(creep)
+			team2cm_list.add(creep)
+			all_sprites.add(creep)
+	
 		creep_ranged1 = Creep_range1()
 		creep_ranged2 = Creep_range2()
+		team1.add(creep_ranged1)
+		team2.add(creep_ranged2)
 		team1cr_list.add(creep_ranged1)
 		team2cr_list.add(creep_ranged2)
 		all_sprites.add(creep_ranged1, creep_ranged2)
@@ -858,6 +922,8 @@ while running:
 		waveca = False
 		creep_asedio1 = Creep_asedio1()	
 		creep_asedio2 = Creep_asedio2()
+		team1.add(creep_asedio1)
+		team2.add(creep_asedio2)
 		team1ca_list.add(creep_asedio1)
 		team2ca_list.add(creep_asedio2)
 		all_sprites.add(creep_asedio1, creep_asedio2)
@@ -869,15 +935,28 @@ while running:
 
 	now = pygame.time.get_ticks() - start_time
 
-	anow = pygame.time.get_ticks()
+	anow = pygame.time.get_ticks() - start_time - start_time2
 
-	if (anow//100) % 300 == 0:
-		wave = True
+	if anow >= 30000:
+		if counter1:
+			wave = True
+			start_time2 = pygame.time.get_ticks()
+			counter1 = False
 	
-	bnow = pygame.time.get_ticks()
+	if anow >= 10000:
+		if anow <= 15000:
+			counter1 = True
+	
+	bnow = pygame.time.get_ticks() - start_time -start_time3
 
-	if (bnow//100) % 600 == 0:
-		waveca = True
+	if bnow >= 1000*60*10:
+		if counter2:
+			start_time3 = pygame.time.get_ticks()
+			waveca = True
+			counter2 = False
+	if bnow >= 10000:
+		if bnow <= 20000:
+			conter2 = True
 		
 	if tower1.hp == 0:
 		game_over2 = True
@@ -889,500 +968,200 @@ while running:
 		if (p1now//100) % 150 == 0:
 			print("ahora")
 			player1 = Player1()
+			team1.add(player1)
 			team1p_list.add(player1)
 			all_sprites.add(player1)
 		
 	if len(team2p_list) == 0:
 		p2now = pygame.time.get_ticks()
-		if (p2now//100) % 150 == 19:
+		if (p2now//100) % 150 == 0:
 			print("ahora2")
 			player2 = Player2()
+			team2.add(player2)
 			team2p_list.add(player2)
 			all_sprites.add(player2)
 		
 	# Checar colisiones - player1 - player2
-	hits = pygame.sprite.spritecollide(player1, team2p_list, False)
-	for hit in hits:
+	if pygame.sprite.collide_rect(player1, player2):
 		keystate = pygame.key.get_pressed()
 		if player1.counter:
-			if keystate[pygame.K_e]:
+			if keystate[pygame.K_f]:
 				player1.counter = False
 				player2.hp -= 5
-		if not keystate[pygame.K_e]:
+		if not keystate[pygame.K_f]:
 			player1.counter = True
-		
-	# Checar colisiones - player2 - player1
-	hits = pygame.sprite.spritecollide(player2, team1p_list, False)
-	for hit in hits:
-		keystate = pygame.key.get_pressed()
 		if player2.counter:
-			if keystate[pygame.K_1]:
+			if keystate[pygame.K_p]:
 				player2.counter = False
 				player1.hp -= 5
-		if not keystate[pygame.K_1]:
+		if not keystate[pygame.K_p]:
 			player2.counter = True
 		
-	# Checar colisiones - player1 - creeps meleea
-	hits = pygame.sprite.spritecollide(player1, team2cma_list, False)
-	for hit in hits:	
-		player1.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player1.counter:
-			if keystate[pygame.K_e]:
-				player1.counter = False
-				creep_melee2a.hp -= 5
-		if not keystate[pygame.K_e]:
-			player1.counter = True
+	# Checar colisiones - creeps melee 1 - creeps melee 2
+	for creep in team1cm_list:
+		for crep in team2cm_list:
+			if pygame.sprite.collide_rect(creep, crep):
+				creep.hp -= 1/10
+				crep.hp -= 1/10
+	# Checar colisiones creeps melee 1 - player2
+	for creep in team1cm_list:
+		if pygame.sprite.collide_rect(creep, player2):
+			player2.hp -= 1/10
+			keystate = pygame.key.get_pressed()
+			if player2.counter:
+				if keystate[pygame.K_p]:
+					player2.counter = False
+					creep.hp -= 5
+			if not keystate[pygame.K_p]:
+				player2.counter = True
+	# Checar colisiones creeps melee 2 - player1
+	for creep in team2cm_list:
+		if pygame.sprite.collide_rect(creep, player1):
+			player1.hp -= 1/10
+			keystate = pygame.key.get_pressed()
+			if player1.counter:
+				if keystate[pygame.K_f]:
+					player1.counter = False
+					creep.hp -= 5
+			if not keystate[pygame.K_f]:
+				player1.counter = True
+	# Checar colisiones creeps melee 1 - tower2
+	for creep in team1cm_list:
+		if pygame.sprite.collide_rect(creep, tower2):
+			tower2.hp -= 1/70
+	# Checar colisiones creeps melee 2 - tower1
+	for creep in team2cm_list:
+		if pygame.sprite.collide_rect(creep, tower1):
+			tower1.hp -= 1/70
+	# Checar colisiones creeps melee 1 - creep asedio2
+	try:
+		for creep in team1cm_list:
+			if pygame.sprite.collide_rect(creep, creep_asedio2):
+				creep_asedio2.hp -= 1/10
+	except(AttributeError):
+		pass
+	# Checar colisiones creeps melee 2 - creep asedio1
+	try:
+		for creep in team2cm_list:
+			if pygame.sprite.collide_rect(creep, creep_asedio1):
+				creep_asedio1.hp -= 1/10
+	except(AttributeError):
+		pass
 		
-	# Checar colisiones - player2 - creeps meleea
-	hits = pygame.sprite.spritecollide(player2, team1cma_list, False)
-	for hit in hits:
-		player2.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player2.counter:
-			if keystate[pygame.K_1]:
-				player2.counter = False
-				creep_melee1a.hp -= 5
-		if not keystate[pygame.K_1]:
-			player2.counter = True
-		
-	# Checar colisiones - player1 - creeps meleeb
-	hits = pygame.sprite.spritecollide(player1, team2cmb_list, False)
-	for hit in hits:
-		player1.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player1.counter:
-			if keystate[pygame.K_e]:
-				player1.counter = False
-				creep_melee2b.hp -= 5
-		if not keystate[pygame.K_e]:
-			player1.counter = True
-		
-	# Checar colisiones - player2 - creeps meleeb
-	hits = pygame.sprite.spritecollide(player2, team1cmb_list, False)
-	for hit in hits:
-		player2.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player2.counter:
-			if keystate[pygame.K_1]:
-				player2.counter = False
-				creep_melee1b.hp -= 5
-		if not keystate[pygame.K_1]:
-			player2.counter = True
-		
-	# Checar colisiones - player1 - creeps meleec
-	hits = pygame.sprite.spritecollide(player1, team2cmc_list, False)
-	for hit in hits:
-		player1.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player1.counter:
-			if keystate[pygame.K_e]:
-				player1.counter = False
-				creep_melee2c.hp -= 5
-		if not keystate[pygame.K_e]:
-			player1.counter = True
-	
-	# Checar colisiones - player2 - creeps meleec
-	hits = pygame.sprite.spritecollide(player2, team1cmc_list, False)
-	for hit in hits:
-		player2.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player2.counter:
-			if keystate[pygame.K_1]:
-				player2.counter = False
-				creep_melee1c.hp -= 5
-		if not keystate[pygame.K_1]:
-			player2.counter = True
-		
-	# Checar colisiones - player1 - creeps ranged
-	hits = pygame.sprite.spritecollide(player1, team2cr_list, False)
-	for hit in hits:
-		player1.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player1.counter:
-			if keystate[pygame.K_e]:
-				player1.counter = False
-				creep_ranged2.hp -= 5
-		if not keystate[pygame.K_e]:
-			player1.counter = True
-		
-	# Checar colisiones - player2 - creeps ranged
-	hits = pygame.sprite.spritecollide(player2, team1cr_list, False)
-	for hit in hits:
-		player2.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player2.counter:
-			if keystate[pygame.K_1]:
-				player2.counter = False
-				creep_ranged1.hp -= 5
-		if not keystate[pygame.K_1]:
-			player2.counter = True
-		
-	# Checar colisiones - player1 - creep asedio
-	hits = pygame.sprite.spritecollide(player1, team2ca_list, False)
-	for hit in hits:
-		player1.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player1.counter:
-			if keystate[pygame.K_e]:
-				player1.counter = False
-				creep_asedio2.hp -= 5
-		if not keystate[pygame.K_e]:
-			player1.counter = True
-		
-	# Checar colisiones - player2 - creep asedio
-	hits = pygame.sprite.spritecollide(player2, team1ca_list, False)
-	for hit in hits:
-		player2.hp -= 1/10
-		keystate = pygame.key.get_pressed()
-		if player2.counter:
-			if keystate[pygame.K_1]:
-				player2.counter = False
-				creep_asedio1.hp -= 5
-		if not keystate[pygame.K_1]:
-			player2.counter = True
-		
-	# Checar colisiones - torre1 - player2
-	hits = pygame.sprite.spritecollide(tower1, team2p_list, False)
-	for hit in hits:
-		#player2.hp -= 1
-		keystate = pygame.key.get_pressed()
-		if player2.counter:
-			if keystate[pygame.K_1]:
-				player2.counter = False
-				tower1.hp -= 3
-		if not keystate[pygame.K_1]:
-			player2.counter = True
-				
-	# Checar colisiones - torre2 - player1
-	hits = pygame.sprite.spritecollide(tower2, team1p_list, False)
-	for hit in hits:
-		#player1.hp -= 1
-		keystate = pygame.key.get_pressed()
-		if player1.counter:
-			if keystate[pygame.K_e]:
-				player1.counter = False
-				tower2.hp -= 3
-		if not keystate[pygame.K_e]:
-			player1.counter = True
+	# Checar colisiones creeps team1 - player2
+	try:
+		for creep in team1:
+			if pygame.sprite.collide_rect(creep, player2):
+				keystate = pygame.key.get_pressed()
+				if player2.counter:
+					if keystate[pygame.K_p]:
+						player2.counter = False
+						if creep == tower1:
+							creep.hp -= 3
+						else:
+							creep.hp -= 5
+				if not keystate[pygame.K_p]:
+					player2.counter = True
+	except(AttributeError):
+		pass
 
-	# Checar colisiones - torre1 - player2
-	hits = pygame.sprite.spritecollide(tower1, team1p_list, False)
-	for hit in hits:
+	# Checar colisiones creeps team2 - player1
+	try:
+		for creep in team2:
+			if pygame.sprite.collide_rect(creep, player1):
+				keystate = pygame.key.get_pressed()
+				if player1.counter:
+					if keystate[pygame.K_f]:
+						player1.counter = False
+						if creep == tower2:
+							creep.hp -= 3
+						else:
+							creep.hp -= 5
+				if not keystate[pygame.K_f]:
+					player1.counter = True
+	except(AttributeError):
+		pass
+	
+	# Checar colisiones - torre1 - player1
+	if pygame.sprite.collide_rect(tower1, player1):
 		player1.hp += 1
 				
-	# Checar colisiones - torre2 - player1
-	hits = pygame.sprite.spritecollide(tower2, team2p_list, False)
-	for hit in hits:
+	# Checar colisiones - torre2 - player2
+	if pygame.sprite.collide_rect(tower2, player2):
 		player2.hp += 1
 		
-	# Checar colisiones - torre1 - creeps meleea
-	hits = pygame.sprite.spritecollide(tower1, team2cma_list, False)
-	for hit in hits:
-		tower1.hp -= 1/70
-			
-	# Checar colisiones - torre2 - creeps meleea
-	hits = pygame.sprite.spritecollide(tower2, team1cma_list, False)
-	for hit in hits:
-		tower2.hp -= 1/70
-		
-	# Checar colisiones - torre1 - creeps meleeb
-	hits = pygame.sprite.spritecollide(tower1, team2cmb_list, False)
-	for hit in hits:
-		tower1.hp -= 1/70
-		
-	# Checar colisiones - torre2 - creeps meleeb
-	hits = pygame.sprite.spritecollide(tower2, team1cmb_list, False)
-	for hit in hits:
-		tower2.hp -= 1/70
-		
-	# Checar colisiones - torre1 - creeps meleec
-	hits = pygame.sprite.spritecollide(tower1, team2cmc_list, False)
-	for hit in hits:
-		tower1.hp -= 1/70
-		
-	# Checar colisiones - torre2 - creeps meleec
-	hits = pygame.sprite.spritecollide(tower2, team1cmc_list, False)
-	for hit in hits:
-		tower2.hp -= 1/70
-		
-	# Checar colisiones - torre1 - creeps ranged
-	hits = pygame.sprite.spritecollide(tower1, team2cr_list, False)
-	for hit in hits:
-		tower1.hp -= 1/70
-		
-	# Checar colisiones - torre2 - creeps ranged
-	hits = pygame.sprite.spritecollide(tower2, team1cr_list, False)
-	for hit in hits:
-		tower2.hp -= 1/70
-
-	# Checar colisiones - torre1 - creeps asedio
-	hits = pygame.sprite.spritecollide(tower1, team2ca_list, False)
-	for hit in hits:
-		tower1.hp -= 1/10
-		
-	# Checar colisiones - torre2 - creeps asedio
-	hits = pygame.sprite.spritecollide(tower2, team1ca_list, False)
-	for hit in hits:
-		tower2.hp -= 1/10
-	
-	# Checar colisiones - creeps meleea - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_melee1a, team2cma_list, False)
-	for hit in hits:
-		creep_melee1a.hp -= 1/10
-		creep_melee2a.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_melee2a, team1cma_list, False)
-	for hit in hits:
-		creep_melee2a.hp -= 1/10
-		creep_melee1a.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_melee1a, team2cmb_list, False)
-	for hit in hits:
-		creep_melee1a.hp -= 1/10
-		creep_melee2b.hp -= 1/10
-			
-	# Checar colisiones - creep melee - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_melee2a, team1cmb_list, False)
-	for hit in hits:
-		creep_melee2a.hp -= 1/10
-		creep_melee1b.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_melee1a, team2cmc_list, False)
-	for hit in hits:
-		creep_melee1a.hp -= 1/10
-		creep_melee2c.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_melee2a, team1cmc_list, False)
-	for hit in hits:
-		creep_melee2a.hp -= 1/10
-		creep_melee1c.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_melee1a, team2cr_list, False)
-	for hit in hits:
-		creep_melee1a.hp -= 1/10
-		creep_ranged2.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_melee2a, team1cr_list, False)
-	for hit in hits:
-		creep_melee2a.hp -= 1/10
-		creep_ranged1.hp -= 1/10
-	
-	# Checar colisiones - creeps meleea - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_melee1b, team2cma_list, False)
-	for hit in hits:
-		creep_melee1b.hp -= 1/10
-		creep_melee2a.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_melee2b, team1cma_list, False)
-	for hit in hits:
-		creep_melee2b.hp -= 1/10
-		creep_melee1a.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_melee1b, team2cmb_list, False)
-	for hit in hits:
-		creep_melee1b.hp -= 1/10
-		creep_melee2b.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_melee2b, team1cmb_list, False)
-	for hit in hits:
-		creep_melee2b.hp -= 1/10
-		creep_melee1b.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_melee1b, team2cmc_list, False)
-	for hit in hits:
-		creep_melee1b.hp -= 1/10
-		creep_melee2c.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_melee2b, team1cmc_list, False)
-	for hit in hits:
-		creep_melee2b.hp -= 1/10
-		creep_melee1c.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_melee1b, team2cr_list, False)
-	for hit in hits:
-		creep_melee1b.hp -= 1/10
-		creep_ranged2.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_melee2b, team1cr_list, False)
-	for hit in hits:
-		creep_melee2b.hp -= 1/10
-		creep_ranged1.hp -= 1/10
-
-	# Checar colisiones - creeps meleea - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_melee1c, team2cma_list, False)
-	for hit in hits:
-		creep_melee1c.hp -= 1/10
-		creep_melee2a.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_melee2c, team1cma_list, False)
-	for hit in hits:
-		creep_melee2c.hp -= 1/10
-		creep_melee1a.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_melee1c, team2cmb_list, False)
-	for hit in hits:
-		creep_melee1c.hp -= 1/10
-		creep_melee2b.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_melee2c, team1cmb_list, False)
-	for hit in hits:
-		creep_melee2c.hp -= 1/10
-		creep_melee1b.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_melee1c, team2cmc_list, False)
-	for hit in hits:
-		creep_melee1c.hp -= 1/10
-		creep_melee2c.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_melee2c, team1cmc_list, False)
-	for hit in hits:
-		creep_melee2c.hp -= 1/10
-		creep_melee1c.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_melee1c, team2cr_list, False)
-	for hit in hits:
-		creep_melee1c.hp -= 1/10
-		creep_ranged2.hp -= 1/10
-		
-	# Checar colisiones - creep melee - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_melee2c, team1cr_list, False)
-	for hit in hits:
-		creep_melee2c.hp -= 1/10
-		creep_ranged1.hp -= 1/10
-		
-	# Checar colisiones - creeps rango - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_ranged1, team2cma_list, False)
-	for hit in hits:
-		creep_ranged1.hp -= 1/10
-		creep_melee2a.hp -= 1/10
-		
-	# Checar colisiones - creep rango - creeps meleea
-	hits = pygame.sprite.spritecollide(creep_ranged2, team1cma_list, False)
-	for hit in hits:
-		creep_ranged2.hp -= 1/10
-		creep_melee1a.hp -= 1/10
-		
-	# Checar colisiones - creep rango - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_ranged1, team2cmb_list, False)
-	for hit in hits:
-		creep_ranged1.hp -= 1/10
-		creep_melee2b.hp -= 1/10
-		
-	# Checar colisiones - creep rango - creeps meleeb
-	hits = pygame.sprite.spritecollide(creep_ranged2, team1cmb_list, False)
-	for hit in hits:
-		creep_ranged2.hp -= 1/10
-		creep_melee1b.hp -= 1/10
-		
-	# Checar colisiones - creep rango - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_ranged1, team2cmc_list, False)
-	for hit in hits:
-		creep_ranged1.hp -= 1/10
-		creep_melee2c.hp -= 1/10
-		
-	# Checar colisiones - creep rango - creeps meleec
-	hits = pygame.sprite.spritecollide(creep_ranged2, team1cmc_list, False)
-	for hit in hits:
-		creep_ranged2.hp -= 1/10
-		creep_melee1c.hp -= 1/10
-		
-	# Checar colisiones - creep rango - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_ranged1, team2cr_list, False)
-	for hit in hits:
-		creep_ranged1.hp -= 1/10
-		creep_ranged2.hp -= 1/10
-		
-	# Checar colisiones - creep rango - creeps ranged
-	hits = pygame.sprite.spritecollide(creep_ranged2, team1cr_list, False)
-	for hit in hits:
-		creep_ranged2.hp -= 1/10
-		creep_ranged1.hp -= 1/10
-
-	# Checar colisiones - player1  - disparo torre
-	hits = pygame.sprite.spritecollide(player1, bullets2, True)
-	for hit in hits:
-		player1.hp -= 150
-
-	# Checar colisiones - player2  - disparo torre
-	hits = pygame.sprite.spritecollide(player2, bullets1, True)
-	for hit in hits:
-		player2.hp -= 150
-
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_melee1a, bullets2, True)
-	for hit in hits:
-		creep_melee1a.hp -= 150
-
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_melee1b, bullets2, True)
-	for hit in hits:
-		creep_melee1b.hp -= 150
-
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_melee1c, bullets2, True)
-	for hit in hits:
-		creep_melee1c.hp -= 150
-
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_ranged1, bullets2, True)
-	for hit in hits:
-		creep_ranged1.hp -= 150
-
-	# Checar colisiones - creep asedio - disparo torre
+	# Checar colisiones - team1  - disparo torre
 	try:
-		hits = pygame.sprite.spritecollide(creep_asedio1, bullets2, True)
-		for hit in hits:
-			creep_asedio1.hp -= 150
+		for creep in team1:
+			for bullet in bullets2:
+				if pygame.sprite.collide_rect(creep, bullet):
+					creep.hp -= 70
+					bullet.kill()
 	except(AttributeError):
 		pass
 
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_melee2a, bullets1, True)
-	for hit in hits:
-		creep_melee2a.hp -= 150
-
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_melee2b, bullets1, True)
-	for hit in hits:
-		creep_melee2b.hp -= 150
-
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_melee2c, bullets1, True)
-	for hit in hits:
-		creep_melee2c.hp -= 150
-
-	# Checar colisiones - creep  - disparo torre
-	hits = pygame.sprite.spritecollide(creep_ranged2, bullets1, True)
-	for hit in hits:
-		creep_ranged2.hp -= 150
-
-	# Checar colisiones - player1  - disparo torre
+	# Checar colisiones - team1  - disparo torre
 	try:
-		hits = pygame.sprite.spritecollide(creep_asedio2, bullets1, True)
-		for hit in hits:
-			creep_asedio2.hp -= 150
+		for creep in team2:
+			for bullet in bullets1:
+				if pygame.sprite.collide_rect(creep, bullet):
+					creep.hp -= 70
+					bullet.kill()
 	except(AttributeError):
 		pass
+
+	# Checar colisiones - team1  - disparo creep ranged
+	try:
+		for creep in team1:
+			for bullet in bullets4:
+				if pygame.sprite.collide_rect(creep, bullet):
+					if creep == tower1:
+						creep.hp -= 3
+					else:
+						creep.hp -= 23
+					bullet.kill()
+	except(AttributeError):
+		pass
+	
+	# Checar colisiones - team2  - disparo creep ranged
+	try:
+		for creep in team2:
+			for bullet in bullets3:
+				if pygame.sprite.collide_rect(creep, bullet):
+					if creep == tower2:
+						creep.hp -= 3
+					else:
+						creep.hp -= 23
+					bullet.kill()
+	except(AttributeError):
+		pass
+
+	# Checar colisiones - team1  - disparo creep asedio
+	try:
+		for creep in team1:
+			for bullet in bullets6:
+				if pygame.sprite.collide_rect(creep, bullet):
+					if creep == tower1:
+						creep.hp -= 40
+					else:
+						creep.hp -= 23
+					bullet.kill()
+	except(AttributeError):
+		pass
+	
+	# Checar colisiones - team2  - disparo creep asedio
+	try:
+		for creep in team2:
+			for bullet in bullets5:
+				if pygame.sprite.collide_rect(creep, bullet):
+					if creep == tower2:
+						creep.hp -= 40
+					else:
+						creep.hp -= 23
+					bullet.kill()
+	except(AssertionError):
+		pass
+
 
 	all_sprites.update()
 			
@@ -1392,7 +1171,8 @@ while running:
 	if now > 16000:
 		game_over = True"""
 	
-	screen.blit(background, [0, 0])
+	screen.fill(BLACK)
+	#screen.blit(background, [0, 0])
 
 	all_sprites.draw(screen)
 
@@ -1400,8 +1180,8 @@ while running:
 	#draw_text(screen, str(score), 25, WIDTH // 2, 10)
 
 	# Escudo.
-	draw_text2(screen, "P1", 20, 210, 6)
-	draw_text2(screen, "P2", 20, 740, 6)
+	draw_text1(screen, "P1", 20, 210, 6)
+	draw_text1(screen, "P2", 20, 740, 6)
 
 	draw_hp_bar1(screen, 220, 5, player1.hp/5)
 	draw_text2(screen, str(int(player1.hp)) + "/500", 10, 270, 6)
@@ -1425,38 +1205,26 @@ while running:
 	draw_hp_bar3(screen, tower2.rect.x, tower2.rect.y - 10, tower2.hp/20)
 	draw_text2(screen, str(int(tower2.hp))+ "/2000", 10, 1145, 691)
 
-	for creep_melee1a in team1cma_list:
-		draw_hp_bar(screen, creep_melee1a.rect.x, creep_melee1a.rect.y - 10, creep_melee1a.hp/(55/10))
+	for creep in team1cm_list:
+		draw_hp_bar(screen, creep.rect.x, creep.rect.y - 10, creep.hp/(55/10))
 	
-	for creep_melee1b in team1cmb_list:
-		draw_hp_bar(screen, creep_melee1b.rect.x, creep_melee1b.rect.y - 10, creep_melee1b.hp/(55/10))
+	for creep in team1cr_list:
+		draw_hp_bar(screen, creep.rect.x, creep.rect.y - 10, creep.hp/3)
 	
-	for creep_melee1c in team1cmc_list:
-		draw_hp_bar(screen, creep_melee1c.rect.x, creep_melee1c.rect.y - 10, creep_melee1c.hp/(55/10))
-	
-	for creep_ranged1 in team1cr_list:
-		draw_hp_bar(screen, creep_ranged1.rect.x, creep_ranged1.rect.y - 10, creep_ranged1.hp/3)
-	
-	for creep_asedio1 in team1ca_list:
-		draw_hp_bar(screen, creep_asedio1.rect.x, creep_asedio1.rect.y - 10, creep_asedio1.hp/(935/100))
+	for creep in team1ca_list:
+		draw_hp_bar(screen, creep.rect.x, creep.rect.y - 10, creep.hp/(935/100))
 
-	for creep_melee2a in team2cma_list:
-		draw_hp_bar2(screen, creep_melee2a.rect.x, creep_melee2a.rect.y - 10, creep_melee2a.hp/(55/10))
+	for creep in team2cm_list:
+		draw_hp_bar2(screen, creep.rect.x, creep.rect.y - 10, creep.hp/(55/10))
 	
-	for creep_melee2b in team2cmb_list:
-		draw_hp_bar2(screen, creep_melee2b.rect.x, creep_melee2b.rect.y - 10, creep_melee2b.hp/(55/10))
-	
-	for creep_melee2c in team2cmc_list:
-		draw_hp_bar2(screen, creep_melee2c.rect.x, creep_melee2c.rect.y - 10, creep_melee2c.hp/(55/10))
-
-	for creep_ranged2 in team2cr_list:
-		draw_hp_bar2(screen, creep_ranged2.rect.x, creep_ranged2.rect.y - 10, creep_ranged2.hp/3)
+	for creep in team2cr_list:
+		draw_hp_bar2(screen, creep.rect.x, creep.rect.y - 10, creep.hp/3)
 		
-	for creep_asedio2 in team2ca_list:
-		draw_hp_bar2(screen, creep_asedio2.rect.x, creep_asedio2.rect.y - 10, creep_asedio2.hp/(935/100))
+	for creep in team2ca_list:
+		draw_hp_bar2(screen, creep.rect.x, creep.rect.y - 10, creep.hp/(935/100))
 	
 
 	#reloj
-	draw_text2(screen, str(((now//60000)+(60))%(60))+":" + str(((now//1000)+(60))%(60)), 30, 600, 50)
+	draw_text1(screen, str(((now//60000)+(60))%(60))+":" + str(((now//1000)+(60))%(60)), 30, 600, 50)
 
 	pygame.display.flip()
