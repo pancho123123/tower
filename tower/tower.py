@@ -84,7 +84,7 @@ def draw_hp_bar3(surface, x, y, percentage):
 	border = pygame.Rect(x, y, BAR_LENGHT, BAR_HEIGHT)
 	fill = pygame.Rect(x, y, fill, BAR_HEIGHT)
 	pygame.draw.rect(surface, BROWN, fill)
-	pygame.draw.rect(surface, BLACK, border, 2)
+	pygame.draw.rect(surface, WHITE, border, 2)
 
 def distance(a,b):
 	#pitagoras distancia entre a y b
@@ -956,7 +956,7 @@ while running:
 			counter2 = False
 	if bnow >= 10000:
 		if bnow <= 20000:
-			conter2 = True
+			counter2 = True
 		
 	if tower1.hp == 0:
 		game_over2 = True
@@ -966,7 +966,6 @@ while running:
 	if len(team1p_list) == 0:
 		p1now = pygame.time.get_ticks()
 		if (p1now//100) % 150 == 0:
-			print("ahora")
 			player1 = Player1()
 			team1.add(player1)
 			team1p_list.add(player1)
@@ -975,7 +974,6 @@ while running:
 	if len(team2p_list) == 0:
 		p2now = pygame.time.get_ticks()
 		if (p2now//100) % 150 == 0:
-			print("ahora2")
 			player2 = Player2()
 			team2.add(player2)
 			team2p_list.add(player2)
