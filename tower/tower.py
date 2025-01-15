@@ -222,7 +222,7 @@ class Tower1(pygame.sprite.Sprite):
 		
 
 	def shoot(self):
-		bullet1 = Bullet1(tower1.rect.x,tower1.rect.y, self.target,pygame.time.get_ticks())
+		bullet1 = Bullet1(tower1.rect.x,tower1.rect.y, self.target, pygame.time.get_ticks())
 		all_sprites.add(bullet1)
 		bullets1.add(bullet1)
 
@@ -268,7 +268,7 @@ class Tower2(pygame.sprite.Sprite):
 		
 
 	def shoot(self):
-		bullet2 = Bullet2(tower2.rect.x,tower2.rect.y, self.target,pygame.time.get_ticks())
+		bullet2 = Bullet2(tower2.rect.x,tower2.rect.y, self.target, pygame.time.get_ticks())
 		all_sprites.add(bullet2)
 		bullets2.add(bullet2)
 
@@ -999,12 +999,13 @@ while running:
 	for creep in team1cm_list:
 		for crep in team2cm_list:
 			if pygame.sprite.collide_rect(creep, crep):
-				creep.hp -= 1/10
-				crep.hp -= 1/10
+				creep.target.hp -= 1/10
+				crep.target.hp -= 1/10
 	# Checar colisiones creeps melee 1 - player2
 	for creep in team1cm_list:
 		if pygame.sprite.collide_rect(creep, player2):
-			player2.hp -= 1/10
+			if creep.target == player2:
+				player2.hp -= 1/10
 			keystate = pygame.key.get_pressed()
 			if player2.counter:
 				if keystate[pygame.K_p]:
@@ -1015,7 +1016,8 @@ while running:
 	# Checar colisiones creeps melee 2 - player1
 	for creep in team2cm_list:
 		if pygame.sprite.collide_rect(creep, player1):
-			player1.hp -= 1/10
+			if creep.target == player1:
+				player1.hp -= 1/10
 			keystate = pygame.key.get_pressed()
 			if player1.counter:
 				if keystate[pygame.K_f]:
